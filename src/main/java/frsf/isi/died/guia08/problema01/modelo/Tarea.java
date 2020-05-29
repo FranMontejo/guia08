@@ -1,6 +1,7 @@
 package frsf.isi.died.guia08.problema01.modelo;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 public class Tarea {
 
@@ -12,11 +13,73 @@ public class Tarea {
 	private LocalDateTime fechaFin;
 	private Boolean facturada;
 	
-	public void asignarEmpleado(Empleado e) {
-		// si la tarea ya tiene un empleado asignado
-		// y tiene fecha de finalizado debe lanzar una excepcion
+	
+	// constructores
+	public Tarea(Integer id, String descripcion, Integer duracionEstimada, Empleado empleadoAsignado) {
+		this.id = id;
+		this.descripcion = descripcion;
+		this.duracionEstimada = duracionEstimada;
+		this.empleadoAsignado = empleadoAsignado;
+		this.facturada = false;
+	}
+	
+	public Tarea(int i, String string, int j) {
+		this.id = i;
+		this.descripcion = string;
+		this.duracionEstimada = j;
+		this.facturada = false;
+	}
+	
+	public Tarea(Integer idTarea) {
+		this.id = idTarea;
 	}
 
+	//Metodos
+	public void asignarEmpleado(Empleado e) throws Exception {
+		if(this.fechaFin != null || this.empleadoAsignado != null) {
+			throw new Exception("Error: la tarea ha finalizado o está asiganada a otro empleado");
+		}
+		else {
+			this.empleadoAsignado = e;
+		}
+	}
+
+	public long getHorasDiferencia() {
+		if(this.fechaFin != null && this.fechaInicio != null) {
+		long dias =  ChronoUnit.DAYS.between(this.getFechaInicio(), this.getFechaFin());
+		return dias;
+		}
+		return 0;
+	}
+	public Double getBeneficio(Double costoH) {
+		Double beneficio = 0.0;
+		if(this.fechaFin != null) {
+			switch (this.getEmpleadoAsignado().getTipo()) {
+				case EFECTIVO:{
+					if(this.getHorasDiferencia()*4 < this.duracionEstimada) {
+						beneficio = 0.2 * costoH;
+					}
+					
+				} break;
+				case CONTRATADO:{
+					if(this.getHorasDiferencia()*4 < this.duracionEstimada) {
+						beneficio = 0.3 * costoH;
+					}
+					else {
+						if(this.getHorasDiferencia()*4 > (this.duracionEstimada)+8) {
+							beneficio = -0.25 * costoH;
+						}
+					}
+				}break;
+			}
+		}
+		
+		return beneficio;
+	}
+	
+
+	
+	// Getters and setters
 	public Integer getId() {
 		return id;
 	}
@@ -58,7 +121,7 @@ public class Tarea {
 	}
 
 	public Boolean getFacturada() {
-		return facturada;
+		return this.facturada;
 	}
 
 	public void setFacturada(Boolean facturada) {
@@ -68,6 +131,13 @@ public class Tarea {
 	public Empleado getEmpleadoAsignado() {
 		return empleadoAsignado;
 	}
-	
+
+
+
+	public String asCsv() {
+		return this.id+";\""+this.descripcion+"\";"+this.duracionEstimada;
+	}
+
+
 	
 }

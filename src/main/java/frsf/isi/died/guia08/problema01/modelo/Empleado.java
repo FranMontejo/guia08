@@ -1,9 +1,18 @@
 package frsf.isi.died.guia08.problema01.modelo;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.io.FileNotFoundException;
+
 
 public class Empleado {
 
@@ -19,48 +28,174 @@ public class Empleado {
 	private Predicate<Tarea> puedeAsignarTarea;
 
 	
-	public Double salario() {
-		// cargar todas las tareas no facturadas
-		// calcular el costo
-		// marcarlas como facturadas.
-		return 0.0;
+	// Constructores 
+	
+	public Empleado(Integer cuil, String nombre, Tipo tipo, Double costoHora) {
+		this.cuil = cuil;
+		this.nombre = nombre;
+		this.tipo = tipo;
+		this.costoHora = costoHora;
+		this.tareasAsignadas = new ArrayList<Tarea>();
+		this.setPredicateFunction();
 	}
 	
-	/**
-	 * Si la tarea ya fue terminada nos indica cuaal es el monto según el algoritmo de calculoPagoPorTarea
-	 * Si la tarea no fue terminada simplemente calcula el costo en base a lo estimado.
-	 * @param t
-	 * @return
-	 */
+	
+	private void setPredicateFunction() {
+		switch(this.tipo) {
+			case CONTRATADO:{
+				this.puedeAsignarTarea = (Tarea t) -> (this.tareasAsignadas.size() <=5);
+				
+			} break;
+			case EFECTIVO:{
+				this.puedeAsignarTarea = (Tarea t) -> (this.tareasAsignadas.stream().mapToInt(s -> s.getDuracionEstimada()).sum() < 15);
+			}
+		}
+		this.calculoPagoPorTarea = t -> (this.costoHora*t.getDuracionEstimada()) + t.getBeneficio(this.costoHora*t.getDuracionEstimada());
+	}
+
+
+	// Metodos
+	
+	public Double salario() {
+		List<Tarea> tareasCobrar = this.tareasAsignadas.stream().filter(s -> !s.getFacturada()).collect(Collectors.toList());
+		Double salario = 0.0;
+		for(Tarea t: tareasCobrar) {
+			salario+= this.calculoPagoPorTarea.apply(t);
+			t.setFacturada(true);
+		}
+		return salario;
+	}
+
+
+	
 	public Double costoTarea(Tarea t) {
 		return 0.0;
 	}
 		
-	public Boolean asignarTarea(Tarea t) {
+	public Boolean asignarTarea(Tarea t) throws Exception {
+		if(this.puedeAsignarTarea.test(t)) {
+			this.tareasAsignadas.add(t);
+			t.asignarEmpleado(this);
+			return true;
+		}
+	
 		return false;
 	}
 	
-	public void comenzar(Integer idTarea) {
-		// busca la tarea en la lista de tareas asignadas 
-		// si la tarea no existe lanza una excepción
-		// si la tarea existe indica como fecha de inicio la fecha y hora actual
+	public void comenzar(Integer idTarea) throws FileNotFoundException {
+		this.asignarFecha(idTarea);
 	}
 	
-	public void finalizar(Integer idTarea) {
-		// busca la tarea en la lista de tareas asignadas 
-		// si la tarea no existe lanza una excepción
-		// si la tarea existe indica como fecha de finalizacion la fecha y hora actual
+	
+
+	public void finalizar(Integer idTarea) throws FileNotFoundException {
+		this.asignarFecha(idTarea);
 	}
 
-	public void comenzar(Integer idTarea,String fecha) {
-		// busca la tarea en la lista de tareas asignadas 
-		// si la tarea no existe lanza una excepción
-		// si la tarea existe indica como fecha de finalizacion la fecha y hora actual
+	public void comenzar(Integer idTarea,String fecha) throws FileNotFoundException {
+		this.asignarFecha(idTarea, fecha);
+		
+		
 	}
 	
-	public void finalizar(Integer idTarea,String fecha) {
-		// busca la tarea en la lista de tareas asignadas 
-		// si la tarea no existe lanza una excepción
-		// si la tarea existe indica como fecha de finalizacion la fecha y hora actual
+	public void finalizar(Integer idTarea,String fecha) throws FileNotFoundException {
+		this.asignarFecha(idTarea,fecha);
 	}
+
+	private void asignarFecha(Integer idTarea) throws FileNotFoundException {
+		Optional<Tarea> t = this.tareasAsignadas.stream().filter(s -> s.getId().equals(idTarea)).findFirst();
+		if(t.isEmpty()) {
+			throw new FileNotFoundException("No se encontró la tarea");
+		}
+		else {
+			if(t.get().getFechaInicio() != null) {
+				t.get().setFechaFin(LocalDateTime.now());
+			}
+			else {
+				t.get().setFechaInicio(LocalDateTime.now());
+			}
+			
+		}
+	}
+
+	
+	private void asignarFecha(Integer idTarea, String fecha) throws FileNotFoundException {
+		Optional<Tarea> t = this.tareasAsignadas.stream().filter(s -> s.getId().equals(idTarea)).findFirst();
+		if(t.isEmpty()) {
+			throw new FileNotFoundException("No se encontró la tarea");
+		}
+		else {
+			if(t.get().getFechaInicio() != null) {
+				t.get().setFechaFin(LocalDateTime.parse(fecha, DateTimeFormatter.ofPattern("DD-MM-YYYY HH:MM")));
+			}
+			else {
+				t.get().setFechaInicio(LocalDateTime.parse(fecha, DateTimeFormatter.ofPattern("DD-MM-YYYY HH:MM")));
+			}
+		}
+	}
+
+	
+	public String asCsv() {
+		return this.cuil+";\""+this.nombre;
+	}
+	
+	
+	// Getters and setters
+
+	public Integer getCuil() {
+		return cuil;
+	}
+
+
+	public void setCuil(Integer cuil) {
+		this.cuil = cuil;
+	}
+
+
+	public String getNombre() {
+		return nombre;
+	}
+
+
+	public void setNombre(String nombre) {
+		this.nombre = nombre;
+	}
+
+
+	public Tipo getTipo() {
+		return tipo;
+	}
+
+
+	public void setTipo(Tipo tipo) {
+		this.tipo = tipo;
+	}
+
+
+	public Double getCostoHora() {
+		return costoHora;
+	}
+
+
+	public void setCostoHora(Double costoHora) {
+		this.costoHora = costoHora;
+	}
+
+
+	public List<Tarea> getTareasAsignadas() {
+		return tareasAsignadas;
+	}
+
+
+	public void setTareasAsignadas(List<Tarea> tareasAsignadas) {
+		this.tareasAsignadas = tareasAsignadas;
+	}
+
+
+
+
+
 }
+
+
+
